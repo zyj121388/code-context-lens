@@ -1,0 +1,273 @@
+{
+  "name": "code-context-lens",
+  "displayName": "代码上下文透镜 (Code Context Lens)",
+  "description": "选中代码，像划词翻译一样弹出小窗；结合项目目录、依赖、调用关系与文件结构解释设计思路。",
+  "version": "0.2.0",
+  "publisher": "local",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zyj121388/code-context-lens.git"
+  },
+  "homepage": "https://github.com/zyj121388/code-context-lens#readme",
+  "bugs": {
+    "url": "https://github.com/zyj121388/code-context-lens/issues"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other",
+    "Education"
+  ],
+  "keywords": [
+    "code explanation",
+    "architecture",
+    "context",
+    "deepseek",
+    "openai",
+    "代码解释",
+    "架构"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codeContextLens.explainSelection",
+        "title": "代码透镜：解释选中代码（完整面板）",
+        "category": "代码透镜"
+      },
+      {
+        "command": "codeContextLens.openFullExplanation",
+        "title": "代码透镜：打开完整解读",
+        "category": "代码透镜"
+      },
+      {
+        "command": "codeContextLens.reanalyze",
+        "title": "代码透镜：重新分析",
+        "category": "代码透镜"
+      },
+      {
+        "command": "codeContextLens.copyExplanation",
+        "title": "代码透镜：复制解读",
+        "category": "代码透镜"
+      },
+      {
+        "command": "codeContextLens.openRelatedFile",
+        "title": "代码透镜：打开关联文件",
+        "category": "代码透镜"
+      },
+      {
+        "command": "codeContextLens.configure",
+        "title": "代码透镜：配置模型 / API Key",
+        "category": "代码透镜"
+      },
+      {
+        "command": "codeContextLens.testProvider",
+        "title": "代码透镜：测试模型连接",
+        "category": "代码透镜"
+      },
+      {
+        "command": "codeContextLens.toggleAuto",
+        "title": "代码透镜：开启 / 暂停自动弹窗",
+        "category": "代码透镜"
+      },
+      {
+        "command": "codeContextLens.clearCache",
+        "title": "代码透镜：清除本地解读缓存",
+        "category": "代码透镜"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "codeContextLens.explainSelection",
+          "when": "editorHasSelection",
+          "group": "navigation@8"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "codeContextLens.reanalyze",
+          "when": "false"
+        },
+        {
+          "command": "codeContextLens.copyExplanation",
+          "when": "false"
+        },
+        {
+          "command": "codeContextLens.openRelatedFile",
+          "when": "false"
+        },
+        {
+          "command": "codeContextLens.openFullExplanation",
+          "when": "editorHasSelection"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "codeContextLens.explainSelection",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorHasSelection"
+      }
+    ],
+    "configuration": {
+      "title": "代码上下文透镜",
+      "properties": {
+        "codeContextLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "总开关。关闭后不会自动弹出；右键菜单和快捷键仍可手动解释代码。"
+        },
+        "codeContextLens.autoPopup": {
+          "type": "boolean",
+          "default": true,
+          "description": "选中代码后自动弹出解读小窗（类似划词翻译）。"
+        },
+        "codeContextLens.popupStyle": {
+          "type": "string",
+          "enum": [
+            "hover",
+            "panel"
+          ],
+          "enumDescriptions": [
+            "原生悬浮窗，贴近选区，推荐；可一键展开完整解读。",
+            "直接在侧边打开完整解读面板（适合固定双栏工作流）。"
+          ],
+          "default": "hover",
+          "description": "自动弹窗的展示方式。"
+        },
+        "codeContextLens.delayMs": {
+          "type": "number",
+          "default": 650,
+          "minimum": 200,
+          "maximum": 5000,
+          "description": "选区停止变化后，等待多久自动弹出（毫秒）。"
+        },
+        "codeContextLens.minSelectionChars": {
+          "type": "number",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 2000,
+          "description": "触发自动弹窗的最小选中字符数，避免选中单个变量时频繁打扰。"
+        },
+        "codeContextLens.maxContextChars": {
+          "type": "number",
+          "default": 28000,
+          "minimum": 4000,
+          "maximum": 80000,
+          "description": "发送给模型的项目上下文字符上限。选中代码始终优先保留。"
+        },
+        "codeContextLens.surroundingLines": {
+          "type": "number",
+          "default": 60,
+          "minimum": 0,
+          "maximum": 300,
+          "description": "当选区没有落在某个符号内时，额外读取选中位置上下多少行作为周边代码。"
+        },
+        "codeContextLens.provider": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "deepseek",
+            "openai",
+            "ollama",
+            "local"
+          ],
+          "enumDescriptions": [
+            "优先使用已配置 Key 的 DeepSeek，其次 OpenAI；都没有时使用本地结构分析。",
+            "DeepSeek 官方 OpenAI 兼容接口。",
+            "OpenAI 官方或任意 OpenAI 兼容接口。",
+            "本机 Ollama / 其他无需 Key 的 OpenAI 兼容服务。",
+            "不联网，仅做本地静态结构分析。"
+          ],
+          "default": "auto",
+          "description": "解读引擎。local 模式完全离线。"
+        },
+        "codeContextLens.model": {
+          "type": "string",
+          "default": "",
+          "description": "模型名。留空使用默认值：deepseek-chat / gpt-4o-mini / qwen2.5-coder:7b。"
+        },
+        "codeContextLens.baseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI 兼容接口地址。留空使用官方默认值；可填 https://host/v1 这样的根地址，也可直接填完整的 /chat/completions 地址。"
+        },
+        "codeContextLens.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0,
+          "maximum": 1.5,
+          "description": "模型温度。结构分析建议保持较低值。"
+        },
+        "codeContextLens.maxOutputTokens": {
+          "type": "number",
+          "default": 1200,
+          "minimum": 300,
+          "maximum": 8000,
+          "description": "深度解读的最大输出 token 数。默认偏向简短回答。"
+        },
+        "codeContextLens.autoDeepAnalysis": {
+          "type": "boolean",
+          "default": true,
+          "description": "小窗出现后，是否自动在后台请求模型生成深度解读。"
+        },
+        "codeContextLens.refreshHoverWhenReady": {
+          "type": "boolean",
+          "default": true,
+          "description": "深度解读生成完成时，如果选区仍在，自动刷新小窗内容。"
+        },
+        "codeContextLens.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "在状态栏显示开关与分析进度。"
+        },
+        "codeContextLens.includeReadme": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否把 README 摘要作为项目背景发送给模型。"
+        },
+        "codeContextLens.includeRelatedFiles": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否读取并发送相关文件摘要（导入方、调用方、对应测试等）。"
+        },
+        "codeContextLens.maxRelatedFiles": {
+          "type": "number",
+          "default": 6,
+          "minimum": 0,
+          "maximum": 20,
+          "description": "最多纳入多少个相关文件。"
+        },
+        "codeContextLens.requestTimeoutMs": {
+          "type": "number",
+          "default": 120000,
+          "minimum": 5000,
+          "maximum": 600000,
+          "description": "模型请求超时时间（毫秒）。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -p . -w",
+    "test": "npm run compile && node test/markdown.test.js && node test/heuristics.test.js && node test/analyzer.test.js && node test/tree.test.js && node test/projectLocator.test.js && node test/hover.test.js && node test/llm.test.js",
+    "test:integration": "npm run compile && node test/vscode/runTest.js",
+    "package": "vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.2.0",
+    "mocha": "^10.8.2",
+    "typescript": "^5.7.2"
+  }
+}
